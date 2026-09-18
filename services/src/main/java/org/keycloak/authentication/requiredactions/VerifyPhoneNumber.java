@@ -17,13 +17,9 @@
 
 package org.keycloak.authentication.requiredactions;
 
-import java.io.IOException;
-import java.text.MessageFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
@@ -42,14 +38,13 @@ import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.Constants;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.models.RealmModel;
 import org.keycloak.models.RequiredActionConfigModel;
 import org.keycloak.models.RequiredActionProviderModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.phone.PhoneAttributes;
+import org.keycloak.phone.PhoneCodePrompt;
 import org.keycloak.phone.PhoneMessage;
 import org.keycloak.phone.PhoneMessageException;
-import org.keycloak.phone.PhoneMessageSenderProvider;
 import org.keycloak.phone.PhoneMessageSenders;
 import org.keycloak.phone.PhoneMessageSenders.ConfiguredSender;
 import org.keycloak.phone.PhoneVerificationConfig;
@@ -59,7 +54,6 @@ import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.services.validation.Validation;
 import org.keycloak.sessions.AuthenticationSessionModel;
-import org.keycloak.theme.Theme;
 
 import org.jboss.logging.Logger;
 
@@ -157,7 +151,7 @@ public class VerifyPhoneNumber implements RequiredActionProvider, RequiredAction
             return;
         }
 
-        send(context, senders, chooseSender(senders, null), number);
+        send(context, senders, PhoneCodePrompt.chooseSender(senders, null), number);
     }
 
     private boolean isCurrentActionTriggeredFromAIA(RequiredActionContext context) {
@@ -193,7 +187,7 @@ public class VerifyPhoneNumber implements RequiredActionProvider, RequiredAction
                         .createForm(FORM));
                 return;
             }
-            send(context, senders, chooseSender(senders, formData.getFirst(FIELD_SENDER)), number);
+            send(context, senders, PhoneCodePrompt.chooseSender(senders, formData.getFirst(FIELD_SENDER)), number);
             return;
         }
 
@@ -244,15 +238,11 @@ public class VerifyPhoneNumber implements RequiredActionProvider, RequiredAction
                 .event(EventType.SEND_VERIFY_PHONE_NUMBER)
                 .detail(Details.USERNAME, user.getUsername());
 
-        PhoneMessageSenderProvider provider = null;
         try {
-            provider = sender.create(session);
-            if (provider == null) {
-                throw new PhoneMessageException("Sender " + sender.id() + " could not be created");
-            }
             Locale locale = session.getContext().resolveLocale(user);
-            provider.send(number, new PhoneMessage(body(context, issued.code(), config, locale),
-                    PhoneMessage.PURPOSE_VERIFY_PHONE_NUMBER, locale));
+            String body = PhoneCodePrompt.body(session, context.getRealm(), MESSAGE_BODY_KEY, issued.code(), config, locale);
+            PhoneCodePrompt.send(session, sender, number,
+                    new PhoneMessage(body, PhoneMessage.PURPOSE_VERIFY_PHONE_NUMBER, locale));
         } catch (PhoneMessageException e) {
             verifications.discard(user.getId(), issued.generation());
             authSession.removeAuthNote(NOTE_GENERATION);
@@ -266,22 +256,11 @@ public class VerifyPhoneNumber implements RequiredActionProvider, RequiredAction
                     .setError(Messages.PHONE_SENT_ERROR)
                     .createErrorPage(Response.Status.INTERNAL_SERVER_ERROR));
             return;
-        } finally {
-            if (provider != null) {
-                provider.close();
-            }
         }
 
         event.success();
 
         context.challenge(form(context, senders).createForm(FORM));
-    }
-
-    private ConfiguredSender chooseSender(List<ConfiguredSender> senders, String requestedId) {
-        return senders.stream()
-                .filter(sender -> sender.id().equals(requestedId))
-                .findFirst()
-                .orElse(senders.get(0));
     }
 
     private LoginFormsProvider form(RequiredActionContext context, List<ConfiguredSender> senders) {
@@ -292,67 +271,12 @@ public class VerifyPhoneNumber implements RequiredActionProvider, RequiredAction
 
         return context.form()
                 .setAuthenticationSession(context.getAuthenticationSession())
-                .setAttribute("phoneNumber", number == null ? "" : masked(number))
-                .setAttribute("senders", senders.stream()
-                        .map(sender -> new SenderBean(sender.id(), sender.displayName(), sender.channel()))
-                        .toList())
+                .setAttribute("phoneNumber", number == null ? "" : PhoneCodePrompt.masked(number))
+                .setAttribute("senders", PhoneCodePrompt.senderBeans(senders))
                 .setAttribute("selectedSender",
                         Objects.requireNonNullElse(context.getAuthenticationSession().getAuthNote(NOTE_SENDER), ""))
                 .setAttribute("codeSent", generation != null)
                 .setAttribute("generation", Objects.requireNonNullElse(generation, ""));
-    }
-
-    // only the last digits are shown
-    static String masked(String number) {
-        String trimmed = number.trim();
-        int visible = 2;
-        if (trimmed.length() <= visible * 2) {
-            return "•••";
-        }
-        return "••• " + trimmed.substring(trimmed.length() - visible);
-    }
-
-    private String body(RequiredActionContext context, String code, PhoneVerificationConfig config, Locale locale) {
-        RealmModel realm = context.getRealm();
-        long minutes = Math.max(1, TimeUnit.SECONDS.toMinutes(config.codeLifespanSeconds()));
-
-        try {
-            Theme theme = context.getSession().theme().getTheme(Theme.Type.LOGIN);
-            // includes the realm localization overrides
-            Properties messages = theme.getEnhancedMessages(realm, locale);
-            String pattern = messages.getProperty(MESSAGE_BODY_KEY);
-            if (pattern != null) {
-                return new MessageFormat(pattern, locale).format(new Object[] { code, minutes });
-            }
-        } catch (IOException e) {
-            logger.warn("Failed to load the login theme messages", e);
-        }
-        return code;
-    }
-
-    public static class SenderBean {
-
-        private final String id;
-        private final String displayName;
-        private final String channel;
-
-        SenderBean(String id, String displayName, String channel) {
-            this.id = id;
-            this.displayName = displayName;
-            this.channel = channel;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-
-        public String getChannel() {
-            return channel;
-        }
     }
 
     private void forget(AuthenticationSessionModel authSession) {

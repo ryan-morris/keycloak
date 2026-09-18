@@ -272,6 +272,17 @@ public class PhoneVerificationManagerTest {
     }
 
     @Test
+    public void keepsNamespacesApart() {
+        PhoneVerificationManager login = new PhoneVerificationManager(store, "login");
+        PhoneVerificationManager.IssuedCode issued = verifications.issue(USER, NUMBER, config(3));
+
+        assertThat(login.verify(USER, NUMBER, issued.generation(), issued.code()),
+                is(PhoneVerificationManager.Result.EXPIRED));
+        assertThat(verifications.verify(USER, NUMBER, issued.generation(), issued.code()),
+                is(PhoneVerificationManager.Result.VERIFIED));
+    }
+
+    @Test
     public void storesNothingThatContainsTheCode() {
         PhoneVerificationManager.IssuedCode issued = verifications.issue(USER, NUMBER, config(3));
         String code = issued.code();

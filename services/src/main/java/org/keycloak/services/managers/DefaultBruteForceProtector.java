@@ -31,6 +31,7 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.UriInfo;
 
+import org.keycloak.authentication.authenticators.browser.PhoneOtpFormAuthenticatorFactory;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.util.Time;
 import org.keycloak.events.Details;
@@ -68,7 +69,8 @@ public class DefaultBruteForceProtector implements BruteForceProtector {
     public static final Set<String> ALLOWED_AUTHENTICATION_CATEGORIES = Set.of(
             PasswordCredentialModel.TYPE,
             OTPCredentialModel.TYPE,
-            RecoveryAuthnCodesCredentialModel.TYPE
+            RecoveryAuthnCodesCredentialModel.TYPE,
+            PhoneOtpFormAuthenticatorFactory.REFERENCE_CATEGORY
     );
 
     public static final String OTP_CATEGORY = OTPCredentialModel.TYPE;

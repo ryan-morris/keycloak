@@ -42,9 +42,18 @@ public class PhoneVerificationManager {
     private static final int GENERATION_LENGTH = 16;
 
     private final SingleUseObjectProvider store;
+    private final String prefix;
 
     public PhoneVerificationManager(SingleUseObjectProvider store) {
+        this(store, null);
+    }
+
+    /**
+     * @param namespace keeps the codes apart from those issued for another purpose
+     */
+    public PhoneVerificationManager(SingleUseObjectProvider store, String namespace) {
         this.store = store;
+        this.prefix = namespace == null ? PREFIX : PREFIX + namespace + ".";
     }
 
     public enum Result {
@@ -154,7 +163,7 @@ public class PhoneVerificationManager {
     }
 
     private String currentKey(String userId) {
-        return PREFIX + userId;
+        return prefix + userId;
     }
 
     private String codeKey(String userId, String generation) {

@@ -65,6 +65,22 @@ To reword it without creating a theme, click *Realm settings*, then the *Localiz
 
 IMPORTANT: An apostrophe in a message must be written twice, as in `Don''t share this code: {0}`. A single apostrophe stops the rest of the message being processed, and `{0}` is then sent literally rather than replaced by the code.
 
+== Using a code as a second step at login
+
+A verified phone number can also be used as a step in the browser flow: the *Phone OTP Form* authenticator sends a code to the number and asks for it back after the password.
+
+It applies only to users whose number has already been verified, because a number nobody verified proves nothing about who is at the other end. Set it up the way the built-in one-time password step is set up, in a conditional subflow:
+
+.Procedure
+. Click *Authentication* in the menu, then duplicate the *browser* flow.
+. In the *forms* subflow, add a subflow, and set it to *Conditional*.
+. In that subflow, add the *Condition - user configured* condition and the *Phone OTP Form* step, and set both to *Required*.
+. Bind the copied flow as the browser flow.
+
+Users whose number is not verified, or who have no number, pass straight through the subflow. If the step is instead *Required* for every user, users without a verified number cannot log in. The code's length, lifespan, attempt limit and resend wait are configured on the step itself.
+
+NOTE: A code sent for signing in cannot be used to verify a number, and a code sent to verify a number cannot be used to sign in.
+
 == What is stored
 
 When a user completes the action, {project_name} sets their `phoneNumberVerified` attribute to `true`. The number itself is stored exactly as it already was; verification does not reformat it.
