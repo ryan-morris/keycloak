@@ -1,0 +1,2 @@
+org.keycloak.tests.providers.phone.RecordingPhoneMessageSenderProviderFactory$Sms
+org.keycloak.tests.providers.phone.RecordingPhoneMessageSenderProviderFactory$Voice

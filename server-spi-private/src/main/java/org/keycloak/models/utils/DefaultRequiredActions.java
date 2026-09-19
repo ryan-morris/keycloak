@@ -84,6 +84,7 @@ public class DefaultRequiredActions {
         CONFIGURE_RECOVERY_AUTHN_CODES(UserModel.RequiredAction.CONFIGURE_RECOVERY_AUTHN_CODES.name(), DefaultRequiredActions::addRecoveryAuthnCodesAction, () -> isFeatureEnabled(Profile.Feature.RECOVERY_CODES)),
         WEBAUTHN_REGISTER("webauthn-register", DefaultRequiredActions::addWebAuthnRegisterAction, () -> isFeatureEnabled(Profile.Feature.WEB_AUTHN)),
         WEBAUTHN_PASSWORDLESS_REGISTER("webauthn-register-passwordless", DefaultRequiredActions::addWebAuthnPasswordlessRegisterAction, () -> isFeatureEnabled(Profile.Feature.WEB_AUTHN)),
+        VERIFY_PHONE_NUMBER(UserModel.RequiredAction.VERIFY_PHONE_NUMBER.name(), DefaultRequiredActions::addVerifyPhoneNumberAction),
         VERIFY_USER_PROFILE(UserModel.RequiredAction.VERIFY_PROFILE.name(), DefaultRequiredActions::addVerifyProfile),
         IDP_LINK_ACCOUNT("idp_link", DefaultRequiredActions::addIdpLink),
         VERIFIABLE_CREDENTIAL_OFFER(VERIFIABLE_CREDENTIAL_OFFER_PROVIDER_ID, DefaultRequiredActions::addVerifiableCredentialOfferAction, () -> isFeatureEnabled(Profile.Feature.OID4VC_VCI));
@@ -132,6 +133,19 @@ public class DefaultRequiredActions {
             verifyEmail.setDefaultAction(false);
             verifyEmail.setPriority(50);
             realm.addRequiredActionProvider(verifyEmail);
+        }
+    }
+
+    public static void addVerifyPhoneNumberAction(RealmModel realm) {
+        if (realm.getRequiredActionProviderByAlias(UserModel.RequiredAction.VERIFY_PHONE_NUMBER.name()) == null) {
+            RequiredActionProviderModel verifyPhoneNumber = new RequiredActionProviderModel();
+            verifyPhoneNumber.setEnabled(false);
+            verifyPhoneNumber.setAlias(UserModel.RequiredAction.VERIFY_PHONE_NUMBER.name());
+            verifyPhoneNumber.setName("Verify Phone Number");
+            verifyPhoneNumber.setProviderId(UserModel.RequiredAction.VERIFY_PHONE_NUMBER.name());
+            verifyPhoneNumber.setDefaultAction(false);
+            verifyPhoneNumber.setPriority(55);
+            realm.addRequiredActionProvider(verifyPhoneNumber);
         }
     }
 

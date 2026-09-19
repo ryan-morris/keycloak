@@ -127,6 +127,14 @@ public class Messages {
 
     public static final String UPDATE_EMAIL = "updateEmailMessage";
 
+    public static final String PHONE_VERIFICATION_UNAVAILABLE = "phoneVerificationUnavailableMessage";
+
+    public static final String PHONE_SENT_ERROR = "phoneSendErrorMessage";
+
+    public static final String INVALID_PHONE_CODE = "invalidPhoneCodeMessage";
+
+    public static final String COOLDOWN_VERIFICATION_PHONE = "phoneVerifySendCooldown";
+
     public static final String LINK_IDP = "linkIdpMessage";
 
     public static final String EMAIL_VERIFIED = "emailVerifiedMessage";

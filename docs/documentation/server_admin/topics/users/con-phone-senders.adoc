@@ -1,0 +1,74 @@
+// Module included in the following assemblies:
+//
+// server_admin/topics/assembly-managing-users.adoc
+
+[id="con-phone-senders_{context}"]
+= Sending messages to phone numbers
+
+{project_name} can verify that the phone number stored on a user actually reaches that user, by sending a code to it and asking for the code back. To do that it needs something that can deliver a message.
+
+{project_name} ships no such provider. Unlike email, where SMTP is a standard every deployment can use, reaching a phone means using a particular service, so delivery is left to a provider you deploy. See the {developerguide_link}[{developerguide_name}] for how to write one.
+
+== Configuring a sender
+
+A realm can have several senders configured at once, typically one per channel, such as one that sends a text message and one that places a phone call. When more than one is configured, the user is asked which they would like to use.
+
+.Procedure
+. Click *Realm settings* in the menu.
+. Click the *Phone* tab.
+. Click *Add sender* and choose one of the providers deployed on your server.
+. Give the sender a name and fill in its configuration. The name is what users see when they are offered a choice, so name it for what it does, such as `Text message`.
+. Click *Save*.
+
+Senders are stored as realm components, so they can equally be managed with the Admin REST API or `kcadm`:
+
+[source,bash]
+----
+kcadm.sh create components -r myrealm \
+  -s name="Text message" \
+  -s providerId=PROVIDER_ID \
+  -s providerType=org.keycloak.phone.PhoneMessageSenderProvider \
+  -s 'config.PROPERTY=["VALUE"]'
+----
+
+Credentials are stored with the sender and are never shown again after they are saved. They can also be `${vault.key}` references, as SMTP credentials can; see <<_vault-administration, Using a vault>>.
+
+A sender whose provider is no longer deployed stays in this list so that you can see and remove it, but it is not offered to users.
+
+== Asking users to verify their number
+
+Verification happens through the *Verify Phone Number* required action, which is not enabled by default.
+
+Enabling it makes the action available: you can assign it to a user, and an application can start it with `kc_action`. It does not ask anyone to verify anything yet.
+
+Marking it a *default action* is what asks everyone: from then on, any user who has an unverified phone number is asked to verify it at their next login, and new users are given the action when they are created. Users who have no phone number are unaffected either way.
+
+.Procedure
+. Click *Authentication* in the menu.
+. Click the *Required actions* tab.
+. Enable *Verify Phone Number*.
+. Optionally, click the gear icon beside it to change how the prompt behaves: the length of the code, how long it can be used for, how many times it can be entered incorrectly, and how long a user must wait before another message can be sent.
+
+NOTE: Sending messages usually costs money. The wait applies to the user, not to a single login: a user who starts another login before it has passed is shown how long is left, and no message is sent.
+
+When an application starts the action with `kc_action`, no message is sent until the user asks for the code, in the same way as *Verify Email*.
+
+If the sender fails, the user is shown an error page and the wait still applies.
+
+Sending a code is recorded as a `SEND_VERIFY_PHONE_NUMBER` event, or `SEND_VERIFY_PHONE_NUMBER_ERROR` if the sender failed. A verified number is recorded as `VERIFY_PHONE_NUMBER`, and a rejected code as `VERIFY_PHONE_NUMBER_ERROR`. Neither the code nor the number is part of these events.
+
+== Changing the wording of the message
+
+The message is built from the `phoneVerificationMessage` key in the login theme, which by default reads `{0} is your verification code. It expires in {1} minutes.` where `{0}` is the code and `{1}` is how long it lasts.
+
+To reword it without creating a theme, click *Realm settings*, then the *Localization* tab, enable *Internationalization*, and add a *Realm override* for `phoneVerificationMessage`. This can be done per locale.
+
+IMPORTANT: An apostrophe in a message must be written twice, as in `Don''t share this code: {0}`. A single apostrophe stops the rest of the message being processed, and `{0}` is then sent literally rather than replaced by the code.
+
+== What is stored
+
+When a user completes the action, {project_name} sets their `phoneNumberVerified` attribute to `true`. The number itself is stored exactly as it already was; verification does not reformat it.
+
+Both attributes are the ones the built-in `phone` client scope maps to the `phone_number` and `phone_number_verified` claims. Neither is part of the default user profile, so a realm that wants phone numbers declares them in *Realm settings* -> *User profile*.
+
+IMPORTANT: If you declare `phoneNumberVerified` in the user profile, make it editable by administrators only. A user who can edit it can mark any number as verified.

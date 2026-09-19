@@ -22,6 +22,8 @@ include::topics/action-token-handler-spi.adoc[]
 
 include::topics/events.adoc[]
 
+include::topics/phone-message-sender-spi.adoc[]
+
 include::topics/saml-role-mappings-spi.adoc[]
 
 endif::[]

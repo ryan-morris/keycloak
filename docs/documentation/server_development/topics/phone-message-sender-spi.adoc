@@ -1,0 +1,74 @@
+
+[[_phone_message_sender_spi]]
+
+== Phone Message Sender SPI
+
+{project_name} can ask a user to prove that the phone number stored on them reaches them, by sending a code to that number. It has no way of its own to deliver that message: unlike email, where SMTP works for every deployment, reaching a phone means going through a particular service. Delivery is therefore an SPI, and {project_name} ships no implementation of it.
+
+You implement `org.keycloak.phone.PhoneMessageSenderProvider`:
+
+[source,java]
+----
+public interface PhoneMessageSenderProvider extends Provider {
+    void send(String number, PhoneMessage message) throws PhoneMessageException;
+}
+----
+
+`PhoneMessage` carries the text to send, already rendered and localized, the locale it was rendered in, and the purpose it is being sent for, such as `verify-phone-number`. A provider that routes or throttles by purpose can read it; one that simply sends can ignore it. Rendering happens before delivery, as it does for email, so a provider never sees a template.
+
+`send` is synchronous and throws `PhoneMessageException` when the message could not be handed over, in the same way `EmailSenderProvider` does. Returning means the message was accepted by the network, not that it was delivered. When it throws, the code that was issued is discarded, the user is shown an error page, and a `SEND_VERIFY_PHONE_NUMBER_ERROR` event is recorded with the exception message as its reason, so do not put the number or the message text in it.
+
+Like the email sender SPI, this SPI is internal and may change without notice, which {project_name} says in the log when it loads your provider.
+
+=== One provider per channel
+
+A provider is one way of reaching a number. Sending a text message and placing a voice call are two providers implementing the same interface, not one provider with a mode, so that a realm can offer both and a user can choose. The channel is declared by the factory rather than the provider, because {project_name} has to know what a sender is before creating one:
+
+[source,java]
+----
+public interface PhoneMessageSenderProviderFactory
+        extends ComponentFactory<PhoneMessageSenderProvider, PhoneMessageSenderProvider> {
+
+    String getChannel();       // "sms", "voice", ...
+    String getDisplayText();   // shown to a user choosing how to receive a code
+}
+----
+
+`getChannel` is an ordinary string, so a channel {project_name} has never heard of needs no change in {project_name}.
+
+=== Configuration
+
+The factory is a `ComponentFactory`, so each configured sender is a component on a realm, in the same way a key provider is. A realm can have several, and each has its own configuration. Declare what it takes in `getConfigProperties`, and check it in `validateConfiguration`:
+
+[source,java]
+----
+@Override
+public List<ProviderConfigProperty> getConfigProperties() {
+    return ProviderConfigurationBuilder.create()
+            .property()
+            .name("apiKey")
+            .label("API key")
+            .type(ProviderConfigProperty.PASSWORD)
+            .secret(true)
+            .add()
+            .build();
+}
+----
+
+Declare both `PASSWORD` and `secret(true)` for every credential. The type gives the Admin Console a masked field; the flag is what stops the stored value ever being sent back out of the server.
+
+Check the configuration in `validateConfiguration`, and reject anything you do not recognize: on creation {project_name} stores what it is given, so a property you never declared is not filtered out for you.
+
+A credential can also be a `${vault.key}` reference. Those are passed through to you as written, so resolve them yourself, the way the SMTP sender does:
+
+[source,java]
+----
+String apiKey = session.vault().getStringSecret(model.getConfig().getFirst("apiKey"))
+        .get().orElse(null);
+----
+
+=== Packaging
+
+Package the provider as described in <<_providers, Service Provider Interfaces>>, registering the factory in `META-INF/services/org.keycloak.phone.PhoneMessageSenderProviderFactory`.
+
+With a sender deployed and configured, enable the *Verify Phone Number* required action on the realm. Nothing sends anything until both are true.

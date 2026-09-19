@@ -176,6 +176,9 @@ export const emailRegexPattern =
 
 export const KEY_PROVIDER_TYPE = "org.keycloak.keys.KeyProvider";
 
+export const PHONE_SENDER_TYPE =
+  "org.keycloak.phone.PhoneMessageSenderProvider";
+
 export const prettyPrintJSON = (value: any) => JSON.stringify(value, null, 2);
 
 export const resolveDisplayName = (

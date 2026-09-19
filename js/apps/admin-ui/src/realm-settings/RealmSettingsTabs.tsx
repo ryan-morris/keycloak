@@ -51,6 +51,7 @@ import { RealmSettingsTokensTab } from "./TokensTab";
 import { UserRegistration } from "./UserRegistration";
 import { EventsTab } from "./event-config/EventsTab";
 import { KeysTab } from "./keys/KeysTab";
+import { PhoneSendersTab } from "./phone/PhoneSendersTab";
 import { LocalizationTab } from "./localization/LocalizationTab";
 import { ClientPoliciesTab, toClientPolicies } from "./routes/ClientPolicies";
 import { RealmSettingsTab, toRealmSettings } from "./routes/RealmSettings";
@@ -295,6 +296,7 @@ export const RealmSettingsTabs = () => {
   const emailTab = useTab("email");
   const themesTab = useTab("themes");
   const keysTab = useTab("keys");
+  const phoneTab = useTab("phone");
   const eventsTab = useTab("events");
   const localizationTab = useTab("localization");
   const securityDefensesTab = useTab("security-defenses");
@@ -381,6 +383,13 @@ export const RealmSettingsTabs = () => {
             {...keysTab}
           >
             <KeysTab />
+          </Tab>
+          <Tab
+            title={<TabTitleText>{t("phone")}</TabTitleText>}
+            data-testid="rs-phone-tab"
+            {...phoneTab}
+          >
+            <PhoneSendersTab />
           </Tab>
           {canViewOrManageEvents && (
             <Tab

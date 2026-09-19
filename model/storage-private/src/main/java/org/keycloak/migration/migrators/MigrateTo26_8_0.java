@@ -17,6 +17,7 @@ import org.keycloak.models.IdentityProviderMapperModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.OrganizationDomainModel;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.utils.DefaultRequiredActions;
 import org.keycloak.organization.OrganizationProvider;
 import org.keycloak.representations.idm.RealmRepresentation;
 
@@ -38,6 +39,10 @@ public class MigrateTo26_8_0 extends RealmMigration {
 
     @Override
     public void migrateRealm(KeycloakSession session, RealmModel realm) {
+        // registers the action, disabled: realms that predate it would otherwise only find it
+        // among the unregistered actions in the console
+        DefaultRequiredActions.addVerifyPhoneNumberAction(realm);
+
         AdminPermissionsSchema.SCHEMA.addResourceTypeScope(session, realm, AdminPermissionsSchema.USERS_RESOURCE_TYPE, AdminPermissionsSchema.DELEGATE);
         AdminPermissionsSchema.SCHEMA.addResourceTypeScope(session, realm, AdminPermissionsSchema.GROUPS_RESOURCE_TYPE, AdminPermissionsSchema.DELEGATE_MEMBERS);
 

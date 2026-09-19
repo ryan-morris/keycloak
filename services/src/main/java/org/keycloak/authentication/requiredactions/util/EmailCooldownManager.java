@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.keycloak.authentication.RequiredActionContext;
 import org.keycloak.common.util.Time;
+import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RequiredActionProviderModel;
 import org.keycloak.models.SingleUseObjectProvider;
 import org.keycloak.provider.ProviderConfigProperty;
@@ -36,8 +37,12 @@ public class EmailCooldownManager {
     private static final String KEY_EXPIRE = "expire";
 
     public static Long retrieveCooldownEntry(RequiredActionContext context, String keyPrefix) {
-        SingleUseObjectProvider singleUseCache = context.getSession().singleUseObjects();
-        Map<String, String> cooldownDetails = singleUseCache.get(getCacheKey(context, keyPrefix));
+        return retrieveCooldownEntry(context.getSession(), keyPrefix, context.getUser().getId());
+    }
+
+    public static Long retrieveCooldownEntry(KeycloakSession session, String keyPrefix, String userId) {
+        SingleUseObjectProvider singleUseCache = session.singleUseObjects();
+        Map<String, String> cooldownDetails = singleUseCache.get(keyPrefix + userId);
         if (cooldownDetails == null) {
             return null;
         }
@@ -47,9 +52,12 @@ public class EmailCooldownManager {
     }
 
     public static void addCooldownEntry(RequiredActionContext context, String keyPrefix) {
-        SingleUseObjectProvider cache = context.getSession().singleUseObjects();
-        long cooldownSeconds = getCooldownInSeconds(context);
-        cache.put(getCacheKey(context, keyPrefix), cooldownSeconds, Map.of(KEY_EXPIRE, Long.toString(Time.currentTime() + cooldownSeconds)));
+        addCooldownEntry(context.getSession(), keyPrefix, context.getUser().getId(), getCooldownInSeconds(context));
+    }
+
+    public static void addCooldownEntry(KeycloakSession session, String keyPrefix, String userId, long cooldownSeconds) {
+        session.singleUseObjects().put(keyPrefix + userId, cooldownSeconds,
+                Map.of(KEY_EXPIRE, Long.toString(Time.currentTime() + cooldownSeconds)));
     }
 
     public static ProviderConfigProperty createCooldownConfigProperty() {
@@ -60,10 +68,6 @@ public class EmailCooldownManager {
         cooldown.setType(ProviderConfigProperty.STRING_TYPE);
         cooldown.setDefaultValue(String.valueOf(EMAIL_RESEND_COOLDOWN_DEFAULT_SECONDS));
         return cooldown;
-    }
-
-    private static String getCacheKey(RequiredActionContext context, String keyPrefix) {
-        return keyPrefix + context.getUser().getId();
     }
 
     private static long getCooldownInSeconds(RequiredActionContext context) {

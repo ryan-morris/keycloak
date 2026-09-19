@@ -9,6 +9,7 @@ export type RealmSettingsTab =
   | "email"
   | "themes"
   | "keys"
+  | "phone"
   | "events"
   | "localization"
   | "security-defenses"

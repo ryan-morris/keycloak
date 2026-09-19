@@ -25,6 +25,10 @@ Verify Email::
 Update Profile::
    The user must update profile information, such as name, address, email, and phone number.
 
+Verify Phone Number::
+   The user must verify the phone number stored in their `phoneNumber` attribute. A code is sent to that number and the user types it back. Once this workflow is successfully completed, the `phoneNumberVerified` attribute is set to `true` and the user is allowed to log in.
+   This action does nothing for a user who has no phone number, and it needs a phone message sender to be configured for the realm; see <<con-phone-senders_{context}, Sending messages to phone numbers>>.
+
 NOTE: Some actions do not makes sense to be added to the user account directly. For example, the `Update User Locale` is a helper action to handle some localization related parameters. Another
 example is the `Delete Credential` action, which is supposed to be triggered as a <<con-aia-parameterized_{context}, Parameterized AIA>>.  Regarding this one, if the administrator wants to delete the credential of some
 user, that administrator can do it directly in the Admin Console. The `Delete Credential` action is dedicated to be used for example by the <<_account-service,{project_name} Account Console>>.
